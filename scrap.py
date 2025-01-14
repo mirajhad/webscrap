@@ -4,8 +4,8 @@ import pandas as pd
 import time
 
 # Setup for Selenium WebDriver
-website = 'https://www.flipkart.com/search?q=laptop&otracker=search&otracker1=search&marketplace=FLIPKART&as-show=on&as=off'
-path = 'C:/Users/miraj/OneDrive/Desktop/chromedriver-win64/chromedriver.exe'
+website = 'https://www.flipkart.com/search?q=mobiles'
+path = 'C:/Users/miraj/OneDrive/apps/chromedriver-win64/chromedriver.exe'
 driver = webdriver.Chrome(path)
 driver.get(website)
 
@@ -41,7 +41,7 @@ def scrape_page_data():
             image_url = product.find_element(By.TAG_NAME, 'img').get_attribute('src')
 
             # Extract price (if available) - handle cases where it's not available
-            price_element = product.find_elements(By.CLASS_NAME, '_30jeq3')  # Update class name for price
+            price_element = product.find_elements(By.CLASS_NAME, 'Nx9bqj _4b5DiR')  # Update class name for price
             price = price_element[0].text.strip() if price_element else 'Not Available'
 
             # Store the data as a dictionary
@@ -56,10 +56,33 @@ def scrape_page_data():
             print(f"Error extracting data for a product: {e}")
             continue
 
+# Function to check if the page is blank (i.e., no products)
+def is_page_blank():
+    try:
+        # If no products are found on the page, return True (blank page)
+        products = driver.find_elements(By.CLASS_NAME, 'tUxRFH')
+        return len(products) == 0
+    except Exception as e:
+        print(f"Error checking if page is blank: {e}")
+        return False
+
 # Loop to scrape all pages until the last page
 current_page = 1
+retries = 0  # Counter for retries on blank pages
 while True:
     print(f"Scraping page {current_page}...")
+
+    # Check if the page is blank and retry up to 3 times
+    while is_page_blank() and retries < 3:
+        print(f"Page is blank. Retrying... ({retries + 1}/3)")
+        retries += 1
+        driver.refresh()  # Reload the page
+        time.sleep(3)  # Wait for the page to reload
+
+    # If the page is still blank after 3 retries, exit the loop
+    if is_page_blank():
+        print(f"Page is still blank after {retries} retries. Exiting...")
+        break
 
     # Scrape data for the current page
     scrape_page_data()
@@ -80,6 +103,7 @@ while True:
 
     # Increment the current page
     current_page += 1
+    retries = 0  # Reset retries after a successful page load
 
 # Convert the list of product data to a DataFrame
 df = pd.DataFrame(product_data)
